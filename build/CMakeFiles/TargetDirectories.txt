@@ -1,0 +1,3 @@
+/mnt/d/oop/Tasks/final/my2048/build/CMakeFiles/My2048.dir
+/mnt/d/oop/Tasks/final/my2048/build/CMakeFiles/edit_cache.dir
+/mnt/d/oop/Tasks/final/my2048/build/CMakeFiles/rebuild_cache.dir
