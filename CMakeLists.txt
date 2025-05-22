@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
-project(my2048)
+project(My2048)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
+find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
 
-add_executable(my2048 main.cpp Game2048.cpp)
+add_executable(My2048
+    main.cpp
+    Game2048.cpp
+)
 
-target_link_libraries(my2048 sfml-graphics sfml-window sfml-system)
+target_include_directories(My2048 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(My2048 sfml-graphics sfml-window sfml-system)
