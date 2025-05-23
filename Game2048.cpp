@@ -3,12 +3,22 @@
 #include <random>
 #include <sstream>
 
+// 窗口的宽度
 constexpr int WINDOW_WIDTH = 800;
+// 窗口的高度
 constexpr int WINDOW_HEIGHT = 800;
-constexpr int GRID_OFFSET_X = 100;
-constexpr int GRID_OFFSET_Y = 200;
-constexpr int TILE_SIZE = 100;
-constexpr int TILE_MARGIN = 10;
+// 网格在 x 轴方向的偏移量
+int GRID_OFFSET_X = 100;
+// 网格在 y 轴方向的偏移量
+int GRID_OFFSET_Y = 200;
+// 每个数字方块的大小
+int TILE_SIZE = 30;
+// 数字方块之间的间距
+int TILE_MARGIN = 5;
+// 网格线的粗细
+constexpr int GRID_LINE_THICKNESS = 4; // 增加网格线粗细，让网格更直观
+// 网格线的颜色
+const sf::Color GRID_LINE_COLOR = sf::Color(119, 110, 101);
 
 Game::Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "2048 Game"),
                currentState(GameState::MAIN_MENU),
@@ -16,8 +26,9 @@ Game::Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "2048 Game"),
                gridSize(4),
                score(0),
                gameOver(false),
-               gameWon(false) {
-    
+               gameWon(false),
+               animationProgress(0.0f),
+               animationDuration(1.0f) { // 将动画持续时间从 0.5 秒增加到 1.0 秒
     if (!font.loadFromFile("../arial.ttf")) {
         throw std::runtime_error("Failed to load font");
     }
@@ -82,31 +93,33 @@ void Game::setupExitConfirmUI() {
     exitConfirmYesText.setString("Yes");
     exitConfirmYesText.setCharacterSize(24);
     exitConfirmYesText.setFillColor(sf::Color::White);
-    exitConfirmYesText.setPosition(WINDOW_WIDTH/2 - 110, WINDOW_HEIGHT/2 + 35);
+    exitConfirmYesText.setPosition(WINDOW_WIDTH/2 - 100, WINDOW_HEIGHT/2 + 30);
     
     exitConfirmNoText.setFont(font);
     exitConfirmNoText.setString("No");
     exitConfirmNoText.setCharacterSize(24);
     exitConfirmNoText.setFillColor(sf::Color::White);
-    exitConfirmNoText.setPosition(WINDOW_WIDTH/2 + 60, WINDOW_HEIGHT/2 + 35);
+    exitConfirmNoText.setPosition(WINDOW_WIDTH/2 + 65, WINDOW_HEIGHT/2 + 30);
 }
 
 void Game::initializeUI() {
     setupMainMenu();
     setupVersionMenu();
     
-    // Game UI elements
+    // 游戏分数显示文本
     scoreText.setFont(font);
     scoreText.setCharacterSize(32);
     scoreText.setFillColor(sf::Color::White);
     scoreText.setPosition(20, 20);
     
+    // 游戏结束显示文本
     gameOverText.setFont(font);
     gameOverText.setString("Game Over!");
     gameOverText.setCharacterSize(48);
     gameOverText.setFillColor(sf::Color::Red);
     gameOverText.setPosition(WINDOW_WIDTH/2 - 120, WINDOW_HEIGHT/2 - 50);
     
+    // 重新开始提示文本
     restartText.setFont(font);
     restartText.setString("Press R to Restart");
     restartText.setCharacterSize(24);
@@ -115,6 +128,7 @@ void Game::initializeUI() {
 }
 
 void Game::setupMainMenu() {
+    // 主菜单标题文本
     titleText.setFont(font);
     titleText.setString("2048 Game");
     titleText.setCharacterSize(64);
@@ -129,10 +143,12 @@ void Game::setupMainMenu() {
     };
     
     for (size_t i = 0; i < sizeButtons.size(); ++i) {
+        // 主菜单选择网格大小的按钮
         sizeButtons[i].setSize(sf::Vector2f(200, 80));
         sizeButtons[i].setPosition(300, 250 + i * 120);
         sizeButtons[i].setFillColor(buttonColors[i]);
         
+        // 主菜单选择网格大小按钮上的文本
         sizeButtonTexts[i].setFont(font);
         sizeButtonTexts[i].setString(sizeLabels[i]);
         sizeButtonTexts[i].setCharacterSize(32);
@@ -145,6 +161,7 @@ void Game::setupMainMenu() {
 }
 
 void Game::setupVersionMenu() {
+    // 版本选择菜单标题文本
     versionTitleText.setFont(font);
     versionTitleText.setString("Choose Version");
     versionTitleText.setCharacterSize(48);
@@ -152,18 +169,20 @@ void Game::setupVersionMenu() {
     versionTitleText.setPosition(280, 100);
     
     const std::array<std::string, 2> versionLabels = {
-        "Original Version",
-        "Modified Version"
+        "Original Version (Arrow Keys)",
+        "Diagonal Only (Q/E/Z/C Keys)"
     };
     
     for (size_t i = 0; i < versionButtons.size(); ++i) {
+        // 版本选择菜单的按钮
         versionButtons[i].setSize(sf::Vector2f(400, 80));
         versionButtons[i].setPosition(200, 250 + i * 120);
         versionButtons[i].setFillColor(sf::Color(143, 122, 102));
         
+        // 版本选择菜单按钮上的文本
         versionButtonTexts[i].setFont(font);
         versionButtonTexts[i].setString(versionLabels[i]);
-        versionButtonTexts[i].setCharacterSize(32);
+        versionButtonTexts[i].setCharacterSize(28);
         versionButtonTexts[i].setFillColor(sf::Color::White);
         sf::FloatRect textRect = versionButtonTexts[i].getLocalBounds();
         versionButtonTexts[i].setOrigin(textRect.left + textRect.width/2.0f,
@@ -175,18 +194,18 @@ void Game::setupVersionMenu() {
 void Game::processEvents() {
     sf::Event event;
     while (window.pollEvent(event)) {
-        // 关闭窗口
+        // 关闭窗口事件
         if (event.type == sf::Event::Closed) {
             currentState = GameState::EXIT_CONFIRM;
         }
 
-        // 键盘输入处理
+        // 键盘输入事件
         if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
                 currentState = GameState::EXIT_CONFIRM;
             }
 
-            // 退出确认界面
+            // 退出确认界面处理
             if (currentState == GameState::EXIT_CONFIRM) {
                 if (event.key.code == sf::Keyboard::Y) {
                     window.close();
@@ -236,7 +255,6 @@ void Game::processEvents() {
     }
 }
 
-
 void Game::handleMainMenuClick(const sf::Vector2f& pos) {
     for (size_t i = 0; i < sizeButtons.size(); ++i) {
         if (sizeButtons[i].getGlobalBounds().contains(pos)) {
@@ -261,12 +279,24 @@ void Game::handleVersionMenuClick(const sf::Vector2f& pos) {
 void Game::handleGameInput(sf::Keyboard::Key key) {
     bool moved = false;
     
-    switch (key) {
-        case sf::Keyboard::Up:    moved = moveTiles(0, -1); break;
-        case sf::Keyboard::Down:  moved = moveTiles(0, 1);  break;
-        case sf::Keyboard::Left:  moved = moveTiles(-1, 0); break;
-        case sf::Keyboard::Right: moved = moveTiles(1, 0);  break;
-        default: break;
+    if (currentVersion == GameVersion::ORIGINAL) {
+        // 原始版本：只支持上下左右
+        switch (key) {
+            case sf::Keyboard::Up:    moved = moveTiles(0, -1); break;
+            case sf::Keyboard::Down:  moved = moveTiles(0, 1);  break;
+            case sf::Keyboard::Left:  moved = moveTiles(-1, 0); break;
+            case sf::Keyboard::Right: moved = moveTiles(1, 0);  break;
+            default: break;
+        }
+    } else {
+        // 修改版本：仅支持斜向移动
+        switch (key) {
+            case sf::Keyboard::Q:     moved = moveTiles(-1, -1); break; // 左上
+            case sf::Keyboard::E:     moved = moveTiles(1, -1); break;  // 右上
+            case sf::Keyboard::Z:     moved = moveTiles(-1, 1); break;  // 左下
+            case sf::Keyboard::C:     moved = moveTiles(1, 1); break;   // 右下
+            default: break;
+        }
     }
     
     if (moved) {
@@ -288,7 +318,10 @@ void Game::resetGame() {
     gameOver = false;
     gameWon = false;
     
-    // Add initial tiles
+    // 计算新的网格布局
+    calculateGridLayout();
+    
+    // 添加初始方块
     addRandomTile();
     addRandomTile();
 }
@@ -311,22 +344,109 @@ void Game::addRandomTile() {
         
         auto [x, y] = emptyCells[dist(gen)];
         grid[y][x] = (dist(gen) % 10 < 8) ? 2 : 4;
+        
+        // 添加新方块动画
+        newTileAnimations.push_back({
+            getTilePosition(x, y),
+            0.0f // 初始进度为0
+        });
     }
 }
 
 bool Game::moveTiles(int dx, int dy) {
     bool moved = false;
+    std::vector<std::vector<bool>> merged(gridSize, std::vector<bool>(gridSize, false));
+    tileAnimations.clear(); // 清空之前的动画记录
+
+    // 根据移动方向确定遍历顺序
+    const bool horizontal = (dx != 0);
+    const int start = (dx > 0 || dy > 0) ? gridSize - 1 : 0;
+    const int step = (dx > 0 || dy > 0) ? -1 : 1;
+
+    // 遍历每个可能的行或列
+    for (int i = 0; i < gridSize; ++i) {
+        for (int j = start; j >= 0 && j < gridSize; j += step) {
+            // 获取当前格子的坐标
+            int x = horizontal ? j : i;
+            int y = horizontal ? i : j;
+            
+            if (grid[y][x] == 0) continue;
+
+            // 计算移动方向和目标位置
+            int newX = x;
+            int newY = y;
+            int prevX = x;
+            int prevY = y;
+            bool hasMerged = false;
+
+            while (true) {
+                int nextX = newX + dx;
+                int nextY = newY + dy;
+
+                // 边界检查
+                if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) break;
+
+                // 如果目标位置为空，继续移动
+                if (grid[nextY][nextX] == 0) {
+                    prevX = newX;
+                    prevY = newY;
+                    newX = nextX;
+                    newY = nextY;
+                    moved = true;
+                } 
+                // 如果目标位置有相同值且未合并过
+                else if (grid[nextY][nextX] == grid[y][x] && !merged[nextY][nextX]) {
+                    merged[nextY][nextX] = true;
+                    grid[nextY][nextX] *= 2;
+                    score += grid[nextY][nextX];
+                    grid[y][x] = 0;
+                    moved = true;
+                    hasMerged = true;
+                    break;
+                } 
+                // 其他情况停止移动
+                else {
+                    break;
+                }
+            }
+
+            // 如果没有合并但移动了位置
+            if (!hasMerged && (newX != x || newY != y)) {
+                grid[newY][newX] = grid[y][x];
+                grid[y][x] = 0;
+                tileAnimations.emplace_back(getTilePosition(x, y), getTilePosition(newX, newY));
+                moved = true;
+            }
+
+            if (moved) {
+                tileAnimations.emplace_back(getTilePosition(x, y), getTilePosition(newX, newY));
+            }
+        }
+    }
+
+    if (moved) {
+        animationProgress = 0.0f; // 重置动画进度
+    }
+
+    return moved;
+}
+
+// TODO: 实现连续合并版本的2048
+
+bool Game::moveTilesContinuous(int dx, int dy) {
+    bool moved = false;
     
-    if (dx != 0 && dy != 0) return false;
+    // 创建一个标记矩阵来跟踪哪些格子已经合并过
+    std::vector<std::vector<bool>> merged(gridSize, std::vector<bool>(gridSize, false));
     
-    // Determine iteration order based on direction
-    int startX = dx == 1 ? gridSize - 1 : 0;
-    int endX = dx == 1 ? -1 : gridSize;
-    int stepX = dx == 1 ? -1 : 1;
+    // 确定遍历顺序
+    int startX = (dx >= 0) ? 0 : gridSize - 1;
+    int endX = (dx >= 0) ? gridSize : -1;
+    int stepX = (dx >= 0) ? 1 : -1;
     
-    int startY = dy == 1 ? gridSize - 1 : 0;
-    int endY = dy == 1 ? -1 : gridSize;
-    int stepY = dy == 1 ? -1 : 1;
+    int startY = (dy >= 0) ? 0 : gridSize - 1;
+    int endY = (dy >= 0) ? gridSize : -1;
+    int stepY = (dy >= 0) ? 1 : -1;
     
     for (int y = startY; y != endY; y += stepY) {
         for (int x = startX; x != endX; x += stepX) {
@@ -336,6 +456,7 @@ bool Game::moveTiles(int dx, int dy) {
             int newY = y;
             int currentX = x;
             int currentY = y;
+            bool canMerge = false;
             
             while (true) {
                 currentX += dx;
@@ -349,9 +470,10 @@ bool Game::moveTiles(int dx, int dy) {
                 if (grid[currentY][currentX] == 0) {
                     newX = currentX;
                     newY = currentY;
-                } else if (grid[currentY][currentX] == grid[y][x]) {
+                } else if (grid[currentY][currentX] == grid[y][x] && !merged[currentY][currentX]) {
                     newX = currentX;
                     newY = currentY;
+                    canMerge = true;
                     break;
                 } else {
                     break;
@@ -359,15 +481,16 @@ bool Game::moveTiles(int dx, int dy) {
             }
             
             if (newX != x || newY != y) {
-                if (grid[newY][newX] == grid[y][x]) {
-                    // Merge tiles
+                if (canMerge) {
+                    // 合并方块
                     grid[newY][newX] *= 2;
                     score += grid[newY][newX];
+                    merged[newY][newX] = true; // 标记已合并
                     if (grid[newY][newX] == 2048) {
                         gameWon = true;
                     }
                 } else {
-                    // Move tile
+                    // 移动方块到空位
                     grid[newY][newX] = grid[y][x];
                 }
                 
@@ -379,9 +502,44 @@ bool Game::moveTiles(int dx, int dy) {
     
     return moved;
 }
-
+    
 bool Game::isGameOver() const {
-    // Check for empty cells
+    if (currentVersion == GameVersion::ORIGINAL) {
+        return Game::isGameOver_grid();
+    } else {
+        return Game::isGameOVer_diagonal();
+    }
+}
+
+bool Game::isGameOVer_diagonal() const {
+    for (int y = 0; y < gridSize; ++y) {
+        for (int x = 0; x < gridSize; ++x) {
+            if (grid[y][x] == 0) {
+                return false;
+            }
+        }
+    }
+    for (int y = 0; y < gridSize; ++y) {
+        for (int x = 0; x < gridSize; ++x) {
+            int value = grid[y][x];
+            
+            // 检查右下方邻居
+            if (x < gridSize - 1 && y < gridSize - 1 && grid[y+1][x+1] == value) {
+                return false;
+            }
+            
+            // 检查左下方邻居
+            if (y < gridSize - 1 && x > 0 && grid[y+1][x-1] == value) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+bool Game::isGameOver_grid() const {
+    // 检查是否有空位
     for (int y = 0; y < gridSize; ++y) {
         for (int x = 0; x < gridSize; ++x) {
             if (grid[y][x] == 0) {
@@ -390,17 +548,17 @@ bool Game::isGameOver() const {
         }
     }
     
-    // Check for possible merges
+    // 检查是否有可以合并的方块
     for (int y = 0; y < gridSize; ++y) {
         for (int x = 0; x < gridSize; ++x) {
             int value = grid[y][x];
             
-            // Check right neighbor
+            // 检查右侧邻居
             if (x < gridSize - 1 && grid[y][x+1] == value) {
                 return false;
             }
             
-            // Check bottom neighbor
+            // 检查下方邻居
             if (y < gridSize - 1 && grid[y+1][x] == value) {
                 return false;
             }
@@ -414,25 +572,27 @@ void Game::update() {
     std::ostringstream ss;
     ss << "Score: " << score;
     scoreText.setString(ss.str());
-}
 
-// void Game::render() {
-//     window.clear(sf::Color(187, 173, 160));
-    
-//     switch (currentState) {
-//         case GameState::MAIN_MENU:
-//             renderMainMenu();
-//             break;
-//         case GameState::VERSION_MENU:
-//             renderVersionMenu();
-//             break;
-//         case GameState::GAME:
-//             renderGame();
-//             break;
-//     }
-    
-//     window.display();
-// }
+    if (!tileAnimations.empty()) {
+        animationProgress += (1.0f / (60.0f * animationDuration)); 
+        if (animationProgress >= 1.0f) {
+            animationProgress = 1.0f;
+            tileAnimations.clear();
+        }
+    }
+
+    // 更新新方块生成动画
+    for (auto& anim : newTileAnimations) {
+        anim.progress += (1.0f / (60.0f * spawnAnimationDuration));
+        if (anim.progress > 1.0f) anim.progress = 1.0f;
+    }
+    // 移除已完成的动画
+    newTileAnimations.erase(
+        std::remove_if(newTileAnimations.begin(), newTileAnimations.end(),
+            [](const NewTileAnimation& a) { return a.progress >= 1.0f; }),
+        newTileAnimations.end()
+    );
+}
 
 void Game::render() {
     window.clear(sf::Color(187, 173, 160));
@@ -495,31 +655,84 @@ void Game::renderVersionMenu() {
 }
 
 void Game::renderGame() {
-    // Draw score
+    // 绘制分数
     window.draw(scoreText);
     
-    // Draw grid background
-    sf::RectangleShape gridBackground(sf::Vector2f(
-        gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN,
-        gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN
-    ));
-    gridBackground.setPosition(GRID_OFFSET_X, GRID_OFFSET_Y);
-    gridBackground.setFillColor(sf::Color(143, 122, 102));
-    window.draw(gridBackground);
+    // 绘制网格背景
+    if (currentVersion == GameVersion::ORIGINAL) {
+        // 原始版本 - 绘制整体背景和网格线
+        sf::RectangleShape gridBackground(sf::Vector2f(
+            gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN,
+            gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN
+        ));
+        gridBackground.setPosition(GRID_OFFSET_X, GRID_OFFSET_Y);
+        gridBackground.setFillColor(sf::Color(143, 122, 102));
+        window.draw(gridBackground);
+    } else {
+        // 修改版本 - 绘制黑白棋盘背景
+        for (int y = 0; y < gridSize; ++y) {
+            for (int x = 0; x < gridSize; ++x) {
+                sf::RectangleShape cellBackground(sf::Vector2f(
+                    TILE_SIZE + TILE_MARGIN, 
+                    TILE_SIZE + TILE_MARGIN
+                ));
+                cellBackground.setPosition(
+                    GRID_OFFSET_X + x * (TILE_SIZE + TILE_MARGIN),
+                    GRID_OFFSET_Y + y * (TILE_SIZE + TILE_MARGIN)
+                );
+                cellBackground.setFillColor(getCellBackgroundColor(x, y));
+                window.draw(cellBackground);
+            }
+        }
+    }
     
-    // Draw tiles
+    // 绘制数字格子
     for (int y = 0; y < gridSize; ++y) {
         for (int x = 0; x < gridSize; ++x) {
             if (grid[y][x] != 0) {
                 sf::RectangleShape tile(sf::Vector2f(TILE_SIZE, TILE_SIZE));
-                tile.setPosition(
-                    GRID_OFFSET_X + TILE_MARGIN + x * (TILE_SIZE + TILE_MARGIN),
-                    GRID_OFFSET_Y + TILE_MARGIN + y * (TILE_SIZE + TILE_MARGIN)
-                );
+                
+                // 调整位置 - 修改版本需要居中
+                sf::Vector2f position;
+                if (currentVersion == GameVersion::MODIFIED) {
+                    position = sf::Vector2f(
+                        GRID_OFFSET_X + x * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN/2,
+                        GRID_OFFSET_Y + y * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN/2
+                    );
+                } else {
+                    position = sf::Vector2f(
+                        GRID_OFFSET_X + TILE_MARGIN + x * (TILE_SIZE + TILE_MARGIN),
+                        GRID_OFFSET_Y + TILE_MARGIN + y * (TILE_SIZE + TILE_MARGIN)
+                    );
+                }
+
+                float scale = 1.0f;
+                for (const auto& anim : newTileAnimations) {
+                    if (position == anim.position) {
+                        // 使用缓动函数实现更平滑的动画
+                        scale = 0.2f + 0.8f * std::sin(anim.progress * 3.14159f/2);
+                        break;
+                    }
+                }
+                tile.setScale(scale, scale);
+
+                // 如果有动画，根据动画进度更新位置
+                for (size_t i = 0; i < tileAnimations.size(); ++i) {
+                    if (getTilePosition(x, y) == tileAnimations[i].first) {
+                        position.x = tileAnimations[i].first.x + (tileAnimations[i].second.x - tileAnimations[i].first.x) * animationProgress;
+                        position.y = tileAnimations[i].first.y + (tileAnimations[i].second.y - tileAnimations[i].first.y) * animationProgress;
+                        break;
+                    }
+                }
+
+                // 调整位置中心点以保持居中缩放
+                tile.setOrigin(TILE_SIZE/2 * (1 - scale), TILE_SIZE/2 * (1 - scale)); 
+
+                tile.setPosition(position);
                 tile.setFillColor(getTileColor(grid[y][x]));
                 window.draw(tile);
                 
-                // Draw tile value
+                // 绘制数字
                 sf::Text valueText;
                 valueText.setFont(font);
                 valueText.setString(std::to_string(grid[y][x]));
@@ -529,16 +742,26 @@ void Game::renderGame() {
                 sf::FloatRect textRect = valueText.getLocalBounds();
                 valueText.setOrigin(textRect.left + textRect.width/2.0f,
                                   textRect.top + textRect.height/2.0f);
-                valueText.setPosition(
-                    GRID_OFFSET_X + TILE_MARGIN + x * (TILE_SIZE + TILE_MARGIN) + TILE_SIZE/2,
-                    GRID_OFFSET_Y + TILE_MARGIN + y * (TILE_SIZE + TILE_MARGIN) + TILE_SIZE/2
-                );
+                
+                // 调整数字位置 - 修改版本需要居中
+                if (currentVersion == GameVersion::MODIFIED) {
+                    valueText.setPosition(
+                        position.x + TILE_SIZE/2,
+                        position.y + TILE_SIZE/2
+                    );
+                } else {
+                    valueText.setPosition(
+                        position.x + TILE_SIZE/2,
+                        position.y + TILE_SIZE/2
+                    );
+                }
+                
                 window.draw(valueText);
             }
         }
     }
     
-    // Draw game over/won message
+    // 绘制游戏结束/胜利消息（保持不变）
     if (gameOver) {
         sf::RectangleShape overlay(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
         overlay.setFillColor(sf::Color(0, 0, 0, 150));
@@ -562,6 +785,34 @@ void Game::renderGame() {
     }
 }
 
+// 在构造函数之后添加这些函数实现
+void Game::calculateGridLayout() {
+    // 根据网格大小计算方块尺寸和间距
+    const float maxGridWidth = WINDOW_WIDTH * 0.8f;  // 网格最大宽度为窗口宽度的80%
+    const float maxGridHeight = WINDOW_HEIGHT * 0.6f; // 网格最大高度为窗口高度的60%
+    
+    // 计算适合的方块大小
+    float tileSizeWithMargin = std::min(
+        maxGridWidth / (gridSize + 0.5f),  // 加0.5f为边距留空间
+        maxGridHeight / (gridSize + 0.5f)
+    );
+    
+    // 设置方块大小和间距（间距为大小的1/5）
+    TILE_SIZE = static_cast<int>(tileSizeWithMargin * 0.83f); // 方块占83%
+    TILE_MARGIN = static_cast<int>(tileSizeWithMargin * 0.17f); // 间距占17%
+    
+    // 计算网格起始位置（居中偏下）
+    GRID_OFFSET_X = (WINDOW_WIDTH - (gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN)) / 2;
+    GRID_OFFSET_Y = WINDOW_HEIGHT * 0.6f - (gridSize * (TILE_SIZE + TILE_MARGIN) + TILE_MARGIN) / 2;
+}
+
+sf::Vector2f Game::getTilePosition(int x, int y) const {
+    return sf::Vector2f(
+        GRID_OFFSET_X + x * (TILE_SIZE + TILE_MARGIN),
+        GRID_OFFSET_Y + y * (TILE_SIZE + TILE_MARGIN)
+    );
+}
+
 sf::Color Game::getTileColor(int value) const {
     switch (value) {
         case 2:    return tileColors[0];
@@ -577,4 +828,12 @@ sf::Color Game::getTileColor(int value) const {
         case 2048: return tileColors[10];
         default:   return tileColors[11]; // For values > 2048
     }
+}
+
+sf::Color Game::getCellBackgroundColor(int x, int y) const {
+    if (currentVersion == GameVersion::MODIFIED) {
+        // 修改版本使用更柔和的棋盘样式
+        return (x + y) % 2 == 0 ? sf::Color(220, 220, 220) : sf::Color(170, 170, 170);
+    }
+    return sf::Color::Transparent; // 原始版本不需要这个功能
 }

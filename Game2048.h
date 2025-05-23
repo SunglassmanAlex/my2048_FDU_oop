@@ -4,9 +4,9 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <array>
+#include <algorithm>
 
-enum class 
-GameState {
+enum class GameState {
     MAIN_MENU,
     VERSION_MENU,
     GAME,
@@ -29,6 +29,19 @@ private:
     GameState currentState;
     GameVersion currentVersion;
     int gridSize;
+
+    // 在原有动画相关成员变量旁添加
+    struct NewTileAnimation {
+        sf::Vector2f position;
+        float progress;
+    };
+    std::vector<NewTileAnimation> newTileAnimations;
+    float spawnAnimationDuration = 0.3f; // 新方块生成动画持续时间
+
+    // 动画相关
+    std::vector<std::pair<sf::Vector2f, sf::Vector2f>> tileAnimations; // 存储每个方块的起始和目标位置
+    float animationProgress; // 动画进度，范围从 0 到 1
+    float animationDuration; // 动画持续时间，单位为秒
     
     // Game data
     std::vector<std::vector<int>> grid;
@@ -65,7 +78,10 @@ private:
     sf::Text exitConfirmYesText;
     sf::Text exitConfirmNoText;
 
-    void setupExitConfirmUI();
+    void setupExitConfirmUI();  
+
+    // Draw black and white grids in the modified version
+    sf::Color getCellBackgroundColor(int x, int y) const;
     
     // Core functions
     void processEvents();
@@ -76,6 +92,9 @@ private:
     void renderMainMenu();
     void renderVersionMenu();
     void renderGame();
+
+    void calculateGridLayout();
+    sf::Vector2f getTilePosition(int x, int y) const;
     
     // Input handling
     void handleMainMenuClick(const sf::Vector2f& mousePos);
@@ -87,7 +106,10 @@ private:
     void resetGame();
     void addRandomTile();
     bool moveTiles(int dx, int dy);
+    bool moveTilesContinuous(int dx, int dy);
     bool isGameOver() const;
+    bool isGameOver_grid() const;
+    bool isGameOVer_diagonal() const;
     
     // Helper functions
     void initializeUI();
