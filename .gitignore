@@ -5,3 +5,4 @@ build/
 *.ninja
 *.log
 My2048  # 可执行文件
+build/
